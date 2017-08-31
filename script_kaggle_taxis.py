@@ -16,6 +16,8 @@ import numpy
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
 from datetime import datetime
+from sklearn.cluster import MiniBatchKMeans
+
 
 path = r'C:\Users\Pedrors\Desktop\Programação\kaggle\New York City Taxi Trip Duration'
 
@@ -123,6 +125,22 @@ def scaler(train,test):
         
 train,test = scaler(train,test)        
     
+    
+def clusters(train,test):
+    coords = numpy.vstack((train[['pickup1', 'pickup2']].values,
+                    train[['dropoff1', 'dropoff2']].values))
+    sample_ind = numpy.random.permutation(len(coords))[:500000]
+    kmeans = MiniBatchKMeans(n_clusters=150, batch_size=10000).fit(coords[sample_ind])
+    train.loc[:, 'pickup_cluster'] = kmeans.predict(train[['pickup1', 'pickup2']])
+    train.loc[:, 'dropoff_cluster'] = kmeans.predict(train[['dropoff1', 'dropoff2']])
+    test.loc[:, 'pickup_cluster'] = kmeans.predict(test[['pickup1', 'pickup2']])
+    test.loc[:, 'dropoff_cluster'] = kmeans.predict(test[['dropoff1', 'dropoff2']])
+    return train,test
+
+
+train,test = clusters(train,test)                    
+    
+    
 #correlation matrix
 corrmat = train.corr()
 f, ax = plt.subplots(figsize=(6, 4))
@@ -165,33 +183,35 @@ watchlist = [(dtrain, 'train'), (dvalid, 'valid')]
 #max_depth = [6,20]
 #learning_rate = [0.1,0.5,0.7]
 #min_child_weight = [20,25,30]
+#n_estimators=[30,50,1000]
 #best ={'depth':0,'lr':0,'mcw':0,'score':9999}
-#for m in max_depth:
-#    for l in learning_rate:
-#        for n in min_child_weight:
-#            print ('{} Min Child Weight,{} Learning Rate, {} Max_depth'.format(n,l,m))
-#            t0 = datetime.now()
-#            xgb_pars = {'min_child_weight': n, 'eta': l, 'colsample_bytree': 0.9, 
-#                        'max_depth': m,
-#            'subsample': 0.9, 'lambda': 1., 'nthread': -1, 'booster' : 'gbtree', 'silent': 1,
-#            'eval_metric': 'rmse', 'objective': 'reg:linear'}
-#            model = xgb.train(xgb_pars, dtrain, 50, watchlist, early_stopping_rounds=10,
-#                  maximize=False, verbose_eval=1)
-#            if model.best_score < best['score']:
-#                best['score'] = model.best_score
-#                best['depth'] = m
-#                best['lr'] = l
-#                best['mcw'] = n
+#for ne in n_estimators:
+#    for m in max_depth:
+#        for l in learning_rate:
+#            for n in min_child_weight:
+#                print ('{} Min Child Weight,{} Learning Rate, {} Max_depth'.format(n,l,m))
+#                t0 = datetime.now()
+#                xgb_pars = {'min_child_weight': n, 'eta': l, 'colsample_bytree': 0.9, 
+#                            'max_depth': m,
+#                'subsample': 0.9, 'lambda': 1., 'nthread': -1, 'booster' : 'gbtree', 'silent': 1,
+#                'eval_metric': 'rmse', 'objective': 'reg:linear','n_estimators ': ne}
+#                model = xgb.train(xgb_pars, dtrain, 50, watchlist, early_stopping_rounds=10,
+#                      maximize=False, verbose_eval=1)
+#                if model.best_score < best['score']:
+#                    best['score'] = model.best_score
+#                    best['depth'] = m
+#                    best['lr'] = l
+#                    best['mcw'] = n
  
 xgb_pars = {'min_child_weight': 20, 'eta': 0.1, 'colsample_bytree': 0.9, 
             'max_depth': 20,
 'subsample': 0.9, 'lambda': 1., 'nthread': -1, 'booster' : 'gbtree', 'silent': 1,
-'eval_metric': 'rmse', 'objective': 'reg:linear'}
+'eval_metric': 'rmse', 'objective': 'reg:linear','n_estimators': 1000}
 model = xgb.train(xgb_pars, dtrain, 100, watchlist, early_stopping_rounds=10,
       maximize=False, verbose_eval=1) 
 
 
-xgb.plot_importance(model)
+xgb.plot_importance(model,)
 
 test = test.drop(keys,axis=1)
 test = test.drop(['id','pickup_datetime'],axis=1)
